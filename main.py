@@ -57,7 +57,7 @@ callbacks = [QueueCallback(q)]
 
 llm = LlamaCpp(
     model_path=model_path,
-    n_gpu_layers=15,
+    n_gpu_layers=os.getenv("N_GPU_LAYERS"),
     n_batch=512,
     n_ctx=4096,
     f16_kv=True,
