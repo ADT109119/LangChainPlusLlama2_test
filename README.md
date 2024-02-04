@@ -1,0 +1,2 @@
+# LangChainPlusLlama2_test
+這是一個在自己電腦上，搭建Llama2讓其將PDF檔當作知識庫的測試
