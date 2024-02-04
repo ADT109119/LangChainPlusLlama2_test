@@ -1,0 +1,5 @@
+/db
+/venv
+*.code-workspace
+*.gguf
+*.pdf
