@@ -27,7 +27,7 @@ python -m pip install llama-cpp-python --prefer-binary --no-cache-dir --extra-in
 
 ## 設定
 
-再 `.env` 檔案中，我們可以簡單的設定一下要使用的模型，以及 gguf 模型載入 GPU 的層數。
+再 `.env` 檔案中，我們可以簡單的設定一下要使用的模型，以及 gguf 模型載入 GPU 的層數等。
 
 目前可設定東西如下:
 ```shell
