@@ -4,6 +4,14 @@
 
 這只是一個簡單測試的專案
 
+測試影片使用 《[Hello算法](https://github.com/krahets/hello-algo)》 作為讀取的pdf檔案，模型使用 [Chinese-LLaMA-Alpaca-2](https://github.com/ymcui/Chinese-LLaMA-Alpaca-2)
+
+
+
+https://github.com/ADT109119/LangChainPlusLlama2_test/assets/106337749/c837a6b1-5218-400a-aef3-ff5b8dadff6d
+
+
+
 ## 安裝以及注意事項
 
 建議創建虛擬環境
