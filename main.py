@@ -1,4 +1,3 @@
-from langchain.document_loaders import PyMuPDFLoader
 import os
 
 from dotenv import load_dotenv
@@ -7,16 +6,22 @@ load_dotenv()
 import glob
 
 
-PDF_data = []
-pdfs = glob.glob("pdf/*.pdf")
+datas = []
 
+from langchain.document_loaders import PyMuPDFLoader
 for pdfFile in glob.glob("pdf/*.pdf"):
     loader = PyMuPDFLoader(pdfFile)
-    PDF_data.extend(loader.load())
+    datas.extend(loader.load())
+
+
+from langchain_community.document_loaders.csv_loader import CSVLoader
+for csvFile in glob.glob("csv/*.csv"):
+    loader = CSVLoader(file_path=csvFile, encoding="utf-8")
+    datas.extend(loader.load())
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=256, chunk_overlap=5)
-all_splits = text_splitter.split_documents(PDF_data)
+all_splits = text_splitter.split_documents(datas)
 
 from langchain.embeddings import HuggingFaceEmbeddings
 model_name = os.getenv("EMBEDDING_MODEL")
