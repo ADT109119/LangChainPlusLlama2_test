@@ -51,38 +51,82 @@ llm = LlamaCpp(
     verbose=True,
 )
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, HumanMessagePromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+contextualize_q_system_prompt = """Given a chat history and the latest user question \
+which might reference context in the chat history, formulate a standalone question \
+which can be understood without the chat history. Do NOT answer the question, \
+just reformulate it if needed and otherwise return it as is."""
+contextualize_q_prompt = ChatPromptTemplate.from_messages(
+    [
+        SystemMessage(content=("""<<SYS>> \n
+                               Given a chat history and the latest user question \
+which might reference context in the chat history, formulate a standalone question \
+which can be understood without the chat history. Do NOT answer the question, \
+just reformulate it if needed and otherwise return it as is.\n <</SYS>>""")),
+        MessagesPlaceholder(variable_name="chat_history"),
+        HumanMessagePromptTemplate.from_template("\n\n [INST] {question} [/INST]")
+    ]
+)
+contextualize_q_chain = contextualize_q_prompt | llm | StrOutputParser()
+contextualize_q_chain.invoke(
+    {
+        "chat_history": [
+            HumanMessage(content="What does LLM stand for?"),
+            AIMessage(content="Large language model"),
+        ],
+        "question": "What is meant by large",
+    }
+)
+
 
 retriever = vectordb.as_retriever()
 
 qa_system_prompt = """
-你是一名導覽員，負責回答大家的問題。 \
-請使用中文回覆問題。 \
+你是一名導覽員，使用中文回覆問題。 \
 {context}
 """
 qa_prompt = ChatPromptTemplate.from_messages(
     [
-        ("system", qa_system_prompt),
+        # ("system", qa_system_prompt),
+        SystemMessage(content=("<<SYS>> \n{context} 你是一名導覽員，使用中文回覆問題。\n <</SYS>>")),
         MessagesPlaceholder(variable_name="chat_history"),
-        ("human", "{question}"),
+        # ("human", "{question}"),
+        HumanMessagePromptTemplate.from_template("\n\n [INST] 請使用中文回覆: \n\n {question} [/INST]")
     ]
 )
 
-from operator import itemgetter
+# from operator import itemgetter
+# rag_chain = (
+#     {
+#         "context": itemgetter("question") | retriever,
+#         "question": itemgetter("question"),
+#         "chat_history":itemgetter("chat_history")
+#     }
+#     | qa_prompt
+#     | llm
+#     | StrOutputParser()
+# )
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+def contextualized_question(input: dict):
+    if input.get("chat_history"):
+        return contextualize_q_chain
+    else:
+        return input["question"]
+
+
 rag_chain = (
-    {
-        "context": itemgetter("question") | retriever,
-        "question": itemgetter("question"),
-        "chat_history":itemgetter("chat_history")
-    }
+    RunnablePassthrough.assign(
+        context=contextualized_question | retriever | format_docs
+    )
     | qa_prompt
     | llm
-    | StrOutputParser()
 )
-
 
 
 if __name__=='__main__':
@@ -96,7 +140,11 @@ if __name__=='__main__':
 
     def chat(message, history):
         print(history)
-        response = rag_chain.invoke({"question":message+"。", "chat_history":format_history(history)})
+        while True:
+            response = rag_chain.invoke({"question":message, "chat_history":format_history(history)})
+            if response != "":
+                break
+
         yield response
 
     gr.ChatInterface(chat).launch()
