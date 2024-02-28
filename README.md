@@ -44,4 +44,9 @@ EMBEDDING_DEVICE="cuda:0"
 LLM_MODEL_PATH="./model/chinese-alpaca-2-7b.Q4_K_M.gguf"
 
 N_GPU_LAYERS=15
+LLM_TEMPERATURE=0.2
 ```
+
+## Update Log
+
+> 2024.02.28 修改提示詞 (參考 [Langchain-Chatchat](https://github.com/chatchat-space/Langchain-Chatchat/blob/master/configs/prompt_config.py.example))
