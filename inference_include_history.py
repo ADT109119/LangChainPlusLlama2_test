@@ -2,7 +2,7 @@ from langchain.document_loaders import PyMuPDFLoader
 import os
 
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 import glob
 
@@ -39,13 +39,14 @@ from typing import Any
 from threading import Thread
 
 model_path = os.getenv("LLM_MODEL_PATH")
-
+print("\n\n" + model_path + "\n\n")
 
 llm = LlamaCpp(
     model_path=model_path,
     n_gpu_layers=os.getenv("N_GPU_LAYERS"),
     n_batch=512,
     n_ctx=4096,
+    temperature=os.getenv("LLM_TEMPERATURE"),
     f16_kv=True,
     callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),
     verbose=True,
@@ -56,76 +57,31 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-contextualize_q_system_prompt = """Given a chat history and the latest user question \
-which might reference context in the chat history, formulate a standalone question \
-which can be understood without the chat history. Do NOT answer the question, \
-just reformulate it if needed and otherwise return it as is."""
-contextualize_q_prompt = ChatPromptTemplate.from_messages(
-    [
-        SystemMessage(content=("""<<SYS>> \n
-                               Given a chat history and the latest user question \
-which might reference context in the chat history, formulate a standalone question \
-which can be understood without the chat history. Do NOT answer the question, \
-just reformulate it if needed and otherwise return it as is.\n <</SYS>>""")),
-        MessagesPlaceholder(variable_name="chat_history"),
-        HumanMessagePromptTemplate.from_template("\n\n [INST] {question} [/INST]")
-    ]
-)
-contextualize_q_chain = contextualize_q_prompt | llm | StrOutputParser()
-contextualize_q_chain.invoke(
-    {
-        "chat_history": [
-            HumanMessage(content="What does LLM stand for?"),
-            AIMessage(content="Large language model"),
-        ],
-        "question": "What is meant by large",
-    }
-)
-
 
 retriever = vectordb.as_retriever()
 
-qa_system_prompt = """
-你是一名導覽員，使用中文回覆問題。 \
-{context}
-"""
 qa_prompt = ChatPromptTemplate.from_messages(
     [
-        # ("system", qa_system_prompt),
-        SystemMessage(content=("<<SYS>> \n{context} 你是一名導覽員，使用中文回覆問題。\n <</SYS>>")),
+        SystemMessage(content=("<<SYS>>根據已知資訊回答問題，若無法從已知資訊中得到答案，請回覆'根據資料庫內的資訊，我無法回覆此問題'，禁止變造答案，使用中文回覆。 <</SYS>>  \n ")),
         MessagesPlaceholder(variable_name="chat_history"),
-        # ("human", "{question}"),
-        HumanMessagePromptTemplate.from_template("\n\n [INST] 請使用中文回覆: \n\n {question} [/INST]")
+        HumanMessagePromptTemplate.from_template("\n\n [INST] 已知資訊:{knownInfo}\n\n 問題: {question} [/INST]")
     ]
 )
 
-# from operator import itemgetter
-# rag_chain = (
-#     {
-#         "context": itemgetter("question") | retriever,
-#         "question": itemgetter("question"),
-#         "chat_history":itemgetter("chat_history")
-#     }
-#     | qa_prompt
-#     | llm
-#     | StrOutputParser()
-# )
 def format_docs(docs):
+    print("\n\n".join(doc.page_content for doc in docs))
     return "\n\n".join(doc.page_content for doc in docs)
 
-def contextualized_question(input: dict):
-    if input.get("chat_history"):
-        return contextualize_q_chain
-    else:
-        return input["question"]
-
-
+from operator import itemgetter
 rag_chain = (
-    RunnablePassthrough.assign(
-        context=contextualized_question | retriever | format_docs
-    )
+    {
+        "knownInfo": itemgetter("question") | retriever | format_docs,
+        "question": itemgetter("question"),
+        "chat_history":itemgetter("chat_history")
+    }
     | qa_prompt
     | llm
+    | StrOutputParser()
 )
 
 
@@ -147,4 +103,4 @@ if __name__=='__main__':
 
         yield response
 
-    gr.ChatInterface(chat).launch()
+    gr.ChatInterface(chat).queue().launch()
