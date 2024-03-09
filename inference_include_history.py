@@ -64,7 +64,7 @@ qa_prompt = ChatPromptTemplate.from_messages(
     [
         SystemMessage(content=("<<SYS>>根據已知資訊回答問題，若無法從已知資訊中得到答案，請回覆'根據資料庫內的資訊，我無法回覆此問題'，禁止變造答案，使用中文回覆。 <</SYS>>  \n ")),
         MessagesPlaceholder(variable_name="chat_history"),
-        HumanMessagePromptTemplate.from_template("\n\n [INST] 已知資訊:{knownInfo}\n\n 問題: {question} [/INST]")
+        HumanMessagePromptTemplate.from_template("\n\n [INST] 已知資訊:\n'''\n{knownInfo}\n```\n\n 問題: {question} [/INST]")
     ]
 )
 
