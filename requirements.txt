@@ -5,4 +5,4 @@ PyMuPDF
 chromadb
 sentence-transformers
 llama-cpp-python
-dotenv
+python-dotenv
